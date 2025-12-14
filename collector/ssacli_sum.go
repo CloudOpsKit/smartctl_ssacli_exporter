@@ -4,7 +4,7 @@ import (
 	"log"
 	"os/exec"
 
-	"smartctl_ssacli_exporter/parser"
+	"github.com/CloudOpsKit/smartctl_ssacli_exporter/parser"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
