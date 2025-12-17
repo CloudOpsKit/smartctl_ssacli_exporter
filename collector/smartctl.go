@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"fmt"
 	"log"
 	"os/exec"
 	"strconv"
@@ -198,6 +199,7 @@ func (c *SmartctlDiskCollector) collect(ch chan<- prometheus.Metric) (*prometheu
 		//log.Debugln("[ERROR] smart log: \n%s\n", out)
 		return nil, err
 	}
+
 	data := parser.ParseSmartctlDisk(string(out))
 
 	if data == nil {
@@ -205,106 +207,162 @@ func (c *SmartctlDiskCollector) collect(ch chan<- prometheus.Metric) (*prometheu
 		return nil, nil
 	}
 
+	// Safety check: verify that arrays are not empty to avoid "index out of range" panic
+	if len(data.SmartctlDiskDataInfo) == 0 || len(data.SmartctlDiskDataAttr) == 0 {
+		return nil, fmt.Errorf("parsed data is empty")
+	}
+
+	info := data.SmartctlDiskDataInfo[0]
+	attrs := data.SmartctlDiskDataAttr[0]
+
 	var (
 		labels = []string{
 			c.diskID,
-			data.SmartctlDiskDataInfo[0].Model,
-			data.SmartctlDiskDataInfo[0].SN,
-			data.SmartctlDiskDataInfo[0].RotRate,
-			data.SmartctlDiskDataInfo[0].FromFact,
+			info.Model,
+			info.SN,
+			info.RotRate,
+			info.FromFact,
 		}
 	)
 
-	ch <- prometheus.MustNewConstMetric(
-		c.rawReadErrorRate,
-		prometheus.GaugeValue,
-		float64(data.SmartctlDiskDataAttr[0].RawReadErrorRate),
-		labels...,
-	)
-	ch <- prometheus.MustNewConstMetric(
-		c.reallocatedSectorCt,
-		prometheus.GaugeValue,
-		float64(data.SmartctlDiskDataAttr[0].ReallocatedSectorCt),
-		labels...,
-	)
-	ch <- prometheus.MustNewConstMetric(
-		c.powerOnHours,
-		prometheus.GaugeValue,
-		float64(data.SmartctlDiskDataAttr[0].PowerOnHours),
-		labels...,
-	)
-	ch <- prometheus.MustNewConstMetric(
-		c.powerCycleCount,
-		prometheus.GaugeValue,
-		float64(data.SmartctlDiskDataAttr[0].PowerCycleCount),
-		labels...,
-	)
-	ch <- prometheus.MustNewConstMetric(
-		c.runtimeBadBlock,
-		prometheus.GaugeValue,
-		float64(data.SmartctlDiskDataAttr[0].RuntimeBadBlock),
-		labels...,
-	)
-	ch <- prometheus.MustNewConstMetric(
-		c.endToEndError,
-		prometheus.GaugeValue,
-		float64(data.SmartctlDiskDataAttr[0].EndToEndError),
-		labels...,
-	)
-	ch <- prometheus.MustNewConstMetric(
-		c.reportedUncorrect,
-		prometheus.GaugeValue,
-		float64(data.SmartctlDiskDataAttr[0].ReportedUncorrect),
-		labels...,
-	)
-	ch <- prometheus.MustNewConstMetric(
-		c.commandTimeout,
-		prometheus.GaugeValue,
-		float64(data.SmartctlDiskDataAttr[0].CommandTimeout),
-		labels...,
-	)
-	ch <- prometheus.MustNewConstMetric(
-		c.hardwareECCRecovered,
-		prometheus.GaugeValue,
-		float64(data.SmartctlDiskDataAttr[0].HardwareECCRecovered),
-		labels...,
-	)
-	ch <- prometheus.MustNewConstMetric(
-		c.reallocatedEventCount,
-		prometheus.GaugeValue,
-		float64(data.SmartctlDiskDataAttr[0].ReallocatedEventCount),
-		labels...,
-	)
-	ch <- prometheus.MustNewConstMetric(
-		c.currentPendingSector,
-		prometheus.GaugeValue,
-		float64(data.SmartctlDiskDataAttr[0].CurrentPendingSector),
-		labels...,
-	)
-	ch <- prometheus.MustNewConstMetric(
-		c.offlineUncorrectable,
-		prometheus.GaugeValue,
-		float64(data.SmartctlDiskDataAttr[0].OfflineUncorrectable),
-		labels...,
-	)
-	ch <- prometheus.MustNewConstMetric(
-		c.uDMACRCErrorCount,
-		prometheus.GaugeValue,
-		float64(data.SmartctlDiskDataAttr[0].UDMACRCErrorCount),
-		labels...,
-	)
-	ch <- prometheus.MustNewConstMetric(
-		c.unusedRsvdBlkCntTot,
-		prometheus.GaugeValue,
-		float64(data.SmartctlDiskDataAttr[0].UnusedRsvdBlkCntTot),
-		labels...,
-	)
-	ch <- prometheus.MustNewConstMetric(
-		c.grownDefects,
-		prometheus.GaugeValue,
-		float64(data.SmartctlDiskDataAttr[0].GrownDefects),
-		labels...,
-	)
+	// Check each attribute pointer before sending.
+	// If the pointer is not nil, the metric exists on the disk -> send it.
+	// If the pointer is nil, the metric is missing -> skip it (do not send 0).
+
+	if attrs.RawReadErrorRate != nil {
+		ch <- prometheus.MustNewConstMetric(
+			c.rawReadErrorRate,
+			prometheus.GaugeValue,
+			*attrs.RawReadErrorRate, // Dereference the pointer (*) to get float64
+			labels...,
+		)
+	}
+
+	if attrs.ReallocatedSectorCt != nil {
+		ch <- prometheus.MustNewConstMetric(
+			c.reallocatedSectorCt,
+			prometheus.GaugeValue,
+			*attrs.ReallocatedSectorCt,
+			labels...,
+		)
+	}
+
+	if attrs.PowerOnHours != nil {
+		ch <- prometheus.MustNewConstMetric(
+			c.powerOnHours,
+			prometheus.GaugeValue,
+			*attrs.PowerOnHours,
+			labels...,
+		)
+	}
+
+	if attrs.PowerCycleCount != nil {
+		ch <- prometheus.MustNewConstMetric(
+			c.powerCycleCount,
+			prometheus.GaugeValue,
+			*attrs.PowerCycleCount,
+			labels...,
+		)
+	}
+
+	if attrs.RuntimeBadBlock != nil {
+		ch <- prometheus.MustNewConstMetric(
+			c.runtimeBadBlock,
+			prometheus.GaugeValue,
+			*attrs.RuntimeBadBlock,
+			labels...,
+		)
+	}
+
+	if attrs.EndToEndError != nil {
+		ch <- prometheus.MustNewConstMetric(
+			c.endToEndError,
+			prometheus.GaugeValue,
+			*attrs.EndToEndError,
+			labels...,
+		)
+	}
+
+	if attrs.ReportedUncorrect != nil {
+		ch <- prometheus.MustNewConstMetric(
+			c.reportedUncorrect,
+			prometheus.GaugeValue,
+			*attrs.ReportedUncorrect,
+			labels...,
+		)
+	}
+
+	if attrs.CommandTimeout != nil {
+		ch <- prometheus.MustNewConstMetric(
+			c.commandTimeout,
+			prometheus.GaugeValue,
+			*attrs.CommandTimeout,
+			labels...,
+		)
+	}
+
+	if attrs.HardwareECCRecovered != nil {
+		ch <- prometheus.MustNewConstMetric(
+			c.hardwareECCRecovered,
+			prometheus.GaugeValue,
+			*attrs.HardwareECCRecovered,
+			labels...,
+		)
+	}
+
+	if attrs.ReallocatedEventCount != nil {
+		ch <- prometheus.MustNewConstMetric(
+			c.reallocatedEventCount,
+			prometheus.GaugeValue,
+			*attrs.ReallocatedEventCount,
+			labels...,
+		)
+	}
+
+	if attrs.CurrentPendingSector != nil {
+		ch <- prometheus.MustNewConstMetric(
+			c.currentPendingSector,
+			prometheus.GaugeValue,
+			*attrs.CurrentPendingSector,
+			labels...,
+		)
+	}
+
+	if attrs.OfflineUncorrectable != nil {
+		ch <- prometheus.MustNewConstMetric(
+			c.offlineUncorrectable,
+			prometheus.GaugeValue,
+			*attrs.OfflineUncorrectable,
+			labels...,
+		)
+	}
+
+	if attrs.UDMACRCErrorCount != nil {
+		ch <- prometheus.MustNewConstMetric(
+			c.uDMACRCErrorCount,
+			prometheus.GaugeValue,
+			*attrs.UDMACRCErrorCount,
+			labels...,
+		)
+	}
+
+	if attrs.UnusedRsvdBlkCntTot != nil {
+		ch <- prometheus.MustNewConstMetric(
+			c.unusedRsvdBlkCntTot,
+			prometheus.GaugeValue,
+			*attrs.UnusedRsvdBlkCntTot,
+			labels...,
+		)
+	}
+
+	if attrs.GrownDefects != nil {
+		ch <- prometheus.MustNewConstMetric(
+			c.grownDefects,
+			prometheus.GaugeValue,
+			*attrs.GrownDefects,
+			labels...,
+		)
+	}
 
 	return nil, nil
 }
