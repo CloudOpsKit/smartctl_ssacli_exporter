@@ -3,6 +3,7 @@ package collector
 import (
 	"log"
 	"os/exec"
+	"strings"
 
 	"github.com/CloudOpsKit/smartctl_ssacli_exporter/parser"
 	"github.com/prometheus/client_golang/prometheus"
@@ -73,15 +74,17 @@ func (c *SsacliLogDiskCollector) collect(ch chan<- prometheus.Metric) (*promethe
 		return nil, nil
 	}
 
-	cmd := "ssacli ctrl slot=" + c.conID + " ld " + c.diskID + " show | grep ."
-	out, err := exec.Command("bash", "-c", cmd).CombinedOutput()
+	slotArg := "slot=" + c.conID
+	out, err := exec.Command("ssacli", "ctrl", slotArg, "ld", c.diskID, "show").CombinedOutput()
 
 	if err != nil {
 		//log.Debugln("[ERROR] ssacli log: \n%s\n", out)
 		return nil, err
 	}
 
-	data := parser.ParseSsacliLogDisk(string(out))
+	// Remove extra spaces and empty lines
+	cleanOutput := strings.TrimSpace(string(out))
+	data := parser.ParseSsacliLogDisk(cleanOutput)
 
 	if data == nil {
 		log.Printf("[FATAL] Unable get data from ssacli logical array exporter")
