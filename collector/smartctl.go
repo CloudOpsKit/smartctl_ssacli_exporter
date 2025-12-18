@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
-	"strconv"
 
 	"github.com/CloudOpsKit/smartctl_ssacli_exporter/parser"
 	"github.com/prometheus/client_golang/prometheus"
@@ -14,8 +13,9 @@ var _ prometheus.Collector = &SmartctlDiskCollector{}
 
 // SmartctlDiskCollector Contain raid controller detail information
 type SmartctlDiskCollector struct {
-	diskID string
-	diskN  int
+	diskID     string
+	diskN      int
+	devicePath string
 
 	rawReadErrorRate      *prometheus.Desc
 	reallocatedSectorCt   *prometheus.Desc
@@ -44,7 +44,7 @@ type SmartctlDiskCollector struct {
 }
 
 // NewSmartctlDiskCollector Create new collector
-func NewSmartctlDiskCollector(diskID string, diskN int) *SmartctlDiskCollector {
+func NewSmartctlDiskCollector(devicePath string, diskID string, diskN int) *SmartctlDiskCollector {
 	// Init labels
 	var (
 		namespace = "smartctl"
@@ -61,8 +61,9 @@ func NewSmartctlDiskCollector(diskID string, diskN int) *SmartctlDiskCollector {
 	// Rerutn Colected metric to ch <-
 	// Include labels
 	return &SmartctlDiskCollector{
-		diskID: diskID,
-		diskN:  diskN,
+		diskID:     diskID,
+		diskN:      diskN,
+		devicePath: devicePath,
 		rawReadErrorRate: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, subsystem, "rawReadErrorRate"),
 			"Smartctl raw read error rate",
@@ -259,8 +260,10 @@ func (c *SmartctlDiskCollector) collect(ch chan<- prometheus.Metric) (*prometheu
 		return nil, nil
 	}
 
-	cmd := "smartctl -iA -d cciss," + strconv.Itoa(c.diskN) + " /dev/sda | grep ."
-	out, err := exec.Command("bash", "-c", cmd).CombinedOutput()
+	diskArg := fmt.Sprintf("cciss,%d", c.diskN)
+
+	cmd := exec.Command("smartctl", "-iA", "-d", diskArg, c.devicePath)
+	out, err := cmd.CombinedOutput()
 
 	if err != nil {
 		//log.Debugln("[ERROR] smart log: \n%s\n", out)

@@ -3,6 +3,7 @@ package collector
 import (
 	"log"
 	"os/exec"
+	"strings"
 
 	"github.com/CloudOpsKit/smartctl_ssacli_exporter/parser"
 	"github.com/prometheus/client_golang/prometheus"
@@ -15,7 +16,6 @@ var _ prometheus.Collector = &SsacliSumCollector{}
 
 // SsacliSumCollector Contain raid controller detail information
 type SsacliSumCollector struct {
-	id                 string
 	hwConSlotDesc      *prometheus.Desc
 	cacheSizeDesc      *prometheus.Desc
 	availCacheSizeDesc *prometheus.Desc
@@ -109,15 +109,16 @@ func (c *SsacliSumCollector) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (c *SsacliSumCollector) collect(ch chan<- prometheus.Metric) (*prometheus.Desc, error) {
-	cmd := "ssacli ctrl all show detail"
-	out, err := exec.Command("bash", "-c", cmd).CombinedOutput()
+	out, err := exec.Command("ssacli", "ctrl", "all", "show", "detail").CombinedOutput()
 
 	if err != nil {
 		//log.Debugln("[ERROR] ssacli log: \n%s\n", out)
 		return nil, err
 	}
 
-	data := parser.ParseSsacliSum(string(out))
+	// Remove extra spaces and empty lines at the edges
+	cleanOutput := strings.TrimSpace(string(out))
+	data := parser.ParseSsacliSum(cleanOutput)
 
 	if data == nil {
 		log.Printf("[FATAL] Unable get data from ssacli summary exporter")
