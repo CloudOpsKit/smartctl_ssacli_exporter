@@ -4,6 +4,7 @@ import (
 	"log"
 	"os/exec"
 	"strings"
+	"sync"
 
 	"github.com/CloudOpsKit/smartctl_ssacli_exporter/collector"
 	"github.com/prometheus/client_golang/prometheus"
@@ -49,6 +50,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
+	var wg sync.WaitGroup
+
 	for _, slotID := range slotIDs {
 		pdIDs, err := getPhysicalDisks(slotID)
 		if err != nil {
@@ -60,12 +63,18 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			smartCtlIndex := 0
 
 			for _, pdID := range pdIDs {
-				// Collect SSACLI metrics for this physical disk
-				collector.NewSsacliPhysDiskCollector(pdID, slotID).Collect(ch)
+				wg.Add(1)
 
-				// Collect SMART metrics for this physical disk
-				// We pass the devicePath (e.g. /dev/sda) and the calculated index
-				collector.NewSmartctlDiskCollector(e.devicePath, pdID, smartCtlIndex).Collect(ch)
+				go func(slotID string, pdID string, idx int) {
+					// Decrement the counter when the goroutine finishes
+					defer wg.Done()
+
+					// SSACLI physical disk metrics
+					collector.NewSsacliPhysDiskCollector(pdID, slotID).Collect(ch)
+
+					// SMART metrics via smartctl
+					collector.NewSmartctlDiskCollector(e.devicePath, pdID, idx).Collect(ch)
+				}(slotID, pdID, smartCtlIndex)
 
 				smartCtlIndex++
 			}
@@ -77,10 +86,16 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			log.Printf("[ERROR] failed getting LDs for slot %s: %v", slotID, err)
 		} else {
 			for _, ldID := range ldIDs {
-				collector.NewSsacliLogDiskCollector(ldID, slotID).Collect(ch)
+				wg.Add(1)
+				go func(slotID string, ldID string) {
+					defer wg.Done()
+					collector.NewSsacliLogDiskCollector(ldID, slotID).Collect(ch)
+				}(slotID, ldID)
 			}
 		}
 	}
+
+	wg.Wait()
 }
 
 // getControllerSlots parses "ssacli ctrl all show status" output.
