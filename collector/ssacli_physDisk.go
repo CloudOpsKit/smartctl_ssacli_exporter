@@ -1,9 +1,9 @@
 package collector
 
 import (
+	"fmt"
 	"log"
 	"os/exec"
-	"strings"
 
 	"github.com/CloudOpsKit/smartctl_ssacli_exporter/parser"
 	"github.com/prometheus/client_golang/prometheus"
@@ -11,75 +11,63 @@ import (
 
 var _ prometheus.Collector = &SsacliPhysDiskCollector{}
 
-// SsacliPhysDiskCollector Contain raid controller detail information
 type SsacliPhysDiskCollector struct {
-	diskID  string
-	conID   string
-	curTemp *prometheus.Desc
-	maxTemp *prometheus.Desc
+	diskID             string
+	slotID             string
+	rawData            string
+	physDiskStatusDesc *prometheus.Desc
 }
 
-// NewSsacliPhysDiskCollector Create new collector
-func NewSsacliPhysDiskCollector(diskID, conID string) *SsacliPhysDiskCollector {
-	// Init labels
+func NewSsacliPhysDiskCollector(diskID string, slotID string) *SsacliPhysDiskCollector {
+	return NewSsacliPhysDiskCollectorWithData(diskID, slotID, "")
+}
+
+func NewSsacliPhysDiskCollectorWithData(diskID string, slotID string, data string) *SsacliPhysDiskCollector {
 	var (
 		namespace = "ssacli"
-		subsystem = "physical_disk"
+		subsystem = "phys_disk"
 		labels    = []string{
-			"diskID",
-			"Status",
-			"DriveType",
-			"IntType",
-			"Size",
-			"BlockSize",
-			"Speed",
-			"Firmware",
-			"SN",
-			"WWID",
-			"Model",
-			"Bay",
+			"physDiskID",
+			"physDiskDriveType",
+			"physDiskInterfaceType",
+			"physDiskSize",
+			"physDiskStatus",
+			"physDiskSerialNumber",
+			"physDiskModel",
+			"physDiskCurrentTemperature",
+			"physDiskMaximumTemperature",
+			"physDiskBay",
+			"physDiskSlotID",
 		}
 	)
 
-	// Return Colected metric to ch <-
-	// Include labels
 	return &SsacliPhysDiskCollector{
-		diskID: diskID,
-		conID:  conID,
-		curTemp: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "curTemp"),
-			"Actual physical disk temperature",
-			labels,
-			nil,
-		),
-		maxTemp: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "maxTmp"),
-			"Physical disk maximum temperature",
+		diskID:  diskID,
+		slotID:  slotID,
+		rawData: data,
+		physDiskStatusDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subsystem, "status"),
+			"Hardware raid physical disk status (1 if OK, 0 otherwise)",
 			labels,
 			nil,
 		),
 	}
 }
 
-// Describe return all description to chanel
 func (c *SsacliPhysDiskCollector) Describe(ch chan<- *prometheus.Desc) {
-	ds := []*prometheus.Desc{
-		c.curTemp,
-		c.maxTemp,
-	}
-	for _, d := range ds {
-		ch <- d
+	if c.physDiskStatusDesc != nil {
+		ch <- c.physDiskStatusDesc
 	}
 }
 
-// Collect create collector
-// Get metric
-// Handle error
 func (c *SsacliPhysDiskCollector) Collect(ch chan<- prometheus.Metric) {
-	if desc, err := c.collect(ch); err != nil {
-		//log.Debugln("[ERROR] failed collecting metric %v: %v", desc, err)
-		ch <- prometheus.NewInvalidMetric(desc, err)
+	if c.physDiskStatusDesc == nil {
+		log.Printf("[ERROR] physDiskStatusDesc is NIL for disk %s. Check constructor!", c.diskID)
 		return
+	}
+
+	if _, err := c.collect(ch); err != nil {
+		log.Printf("[ERROR] failed collecting phys disk metrics for %s: %v", c.diskID, err)
 	}
 }
 
@@ -88,51 +76,50 @@ func (c *SsacliPhysDiskCollector) collect(ch chan<- prometheus.Metric) (*prometh
 		return nil, nil
 	}
 
-	slotArg := "slot=" + c.conID
-	out, err := exec.Command("ssacli", "ctrl", slotArg, "pd", c.diskID, "show", "detail").CombinedOutput()
-
-	if err != nil {
-		//log.Debugln("[ERROR] ssacli log: \n%s\n", out)
-		return nil, err
+	var output string
+	if c.rawData != "" {
+		output = c.rawData
+	} else {
+		slotArg := "slot=" + c.slotID
+		out, err := exec.Command("ssacli", "ctrl", slotArg, "pd", c.diskID, "show", "detail").CombinedOutput()
+		if err != nil {
+			return nil, err
+		}
+		output = string(out)
 	}
 
-	// Remove extra spaces and empty lines
-	cleanOutput := strings.TrimSpace(string(out))
-	data := parser.ParseSsacliPhysDisk(cleanOutput)
-
+	data := parser.ParseSsacliPhysDisk(output)
 	if data == nil {
-		log.Printf("[FATAL] Unable get data from ssacli physical disc exporter")
 		return nil, nil
 	}
 
-	var (
-		labels = []string{
+	for i := range data.SsacliPhysDiskData {
+		labels := []string{
 			c.diskID,
-			data.SsacliPhysDiskData[0].Status,
-			data.SsacliPhysDiskData[0].DriveType,
-			data.SsacliPhysDiskData[0].IntType,
-			data.SsacliPhysDiskData[0].Size,
-			data.SsacliPhysDiskData[0].BlockSize,
-			data.SsacliPhysDiskData[0].Speed,
-			data.SsacliPhysDiskData[0].Firmware,
-			data.SsacliPhysDiskData[0].SN,
-			data.SsacliPhysDiskData[0].WWID,
-			data.SsacliPhysDiskData[0].Model,
-			data.SsacliPhysDiskData[0].Bay,
+			data.SsacliPhysDiskData[i].DriveType,
+			data.SsacliPhysDiskData[i].IntType,
+			data.SsacliPhysDiskData[i].Size,
+			data.SsacliPhysDiskData[i].Status,
+			data.SsacliPhysDiskData[i].SN,
+			data.SsacliPhysDiskData[i].Model,
+			fmt.Sprintf("%.0f", data.SsacliPhysDiskData[i].CurTemp),
+			fmt.Sprintf("%.0f", data.SsacliPhysDiskData[i].MaxTemp),
+			data.SsacliPhysDiskData[i].Bay,
+			c.slotID,
 		}
-	)
 
-	ch <- prometheus.MustNewConstMetric(
-		c.curTemp,
-		prometheus.GaugeValue,
-		float64(data.SsacliPhysDiskData[0].CurTemp),
-		labels...,
-	)
-	ch <- prometheus.MustNewConstMetric(
-		c.maxTemp,
-		prometheus.GaugeValue,
-		float64(data.SsacliPhysDiskData[0].MaxTemp),
-		labels...,
-	)
+		val := 0.0
+		if data.SsacliPhysDiskData[i].Status == "OK" {
+			val = 1.0
+		}
+
+		ch <- prometheus.MustNewConstMetric(
+			c.physDiskStatusDesc,
+			prometheus.GaugeValue,
+			val,
+			labels...,
+		)
+	}
+
 	return nil, nil
 }

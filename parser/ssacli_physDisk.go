@@ -12,6 +12,7 @@ type SsacliPhysDisk struct {
 
 // SsacliPhysDiskData data structure for output
 type SsacliPhysDiskData struct {
+	ID        string
 	Bay       string
 	Status    string
 	DriveType string
@@ -29,46 +30,34 @@ type SsacliPhysDiskData struct {
 
 // ParseSsacliPhysDisk return specific metric
 func ParseSsacliPhysDisk(s string) *SsacliPhysDisk {
-	data := parseSsacliPhysDisk(s)
-
-	return data
+	return parseSsacliPhysDisk(s)
 }
 
 func parseSsacliPhysDisk(s string) *SsacliPhysDisk {
-
 	var (
-		tmp SsacliPhysDiskData
+		disks []SsacliPhysDiskData
+		tmp   SsacliPhysDiskData
 	)
-	re := regexp.MustCompile(`(.+?)\: (.+)`)
-	for _, line := range strings.Split(s, "\n") {
-		kvs := strings.Trim(line, " \t")
-		kv := re.FindStringSubmatch(kvs)
 
-		/* The input looks like this:
-		   physicaldrive 1I:1:2
-		   Port: 1I
-		   Box: 1
-		   Bay: 2
-		   Status: OK
-		   Drive Type: Data Drive
-		   Interface Type: SAS
-		   Size: 72 GB
-		   Drive exposed to OS: False
-		   Logical/Physical Block Size: 512/512
-		   Rotational Speed: 15000
-		   Firmware Revision: HPD2 (FW update is recommended to minimum version: HPD7)
-		   Serial Number: 3PD0EYNW00009744Q72N
-		   WWID: 5000C5000522B3B1
-		   Model: HP      DH072ABAA6
-		   Current Temperature (C): 32
-		   Maximum Temperature (C): 41
-		   PHY Count: 1
-		   PHY Transfer Rate: 3.0Gbps
-		   PHY Physical Link Rate: Unknown
-		   PHY Maximum Link Rate: Unknown
-		   Sanitize Erase Supported: False
-		   Shingled Magnetic Recording Support: None
-		*/
+	re := regexp.MustCompile(`(.+?)\: (.+)`)
+	lines := strings.Split(s, "\n")
+
+	for i, line := range lines {
+		kvs := strings.Trim(line, " \t\r")
+
+		if strings.HasPrefix(kvs, "physicaldrive ") {
+			if tmp.ID != "" {
+				disks = append(disks, tmp)
+			}
+			tmp = SsacliPhysDiskData{}
+			parts := strings.Split(kvs, " ")
+			if len(parts) > 1 {
+				tmp.ID = parts[1]
+			}
+			continue
+		}
+
+		kv := re.FindStringSubmatch(kvs)
 		if len(kv) == 3 {
 			key := kv[1]
 			value := kv[2]
@@ -101,12 +90,15 @@ func parseSsacliPhysDisk(s string) *SsacliPhysDisk {
 				tmp.MaxTemp = toFLO(value)
 			}
 		}
+
+		if i == len(lines)-1 && tmp.ID != "" {
+			disks = append(disks, tmp)
+		}
 	}
 
-	data := SsacliPhysDisk{
-		SsacliPhysDiskData: []SsacliPhysDiskData{
-			tmp,
-		},
+	if len(disks) == 0 && tmp.Status != "" {
+		disks = append(disks, tmp)
 	}
-	return &data
+
+	return &SsacliPhysDisk{SsacliPhysDiskData: disks}
 }

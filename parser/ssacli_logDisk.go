@@ -4,64 +4,80 @@ import (
 	"strings"
 )
 
-// SsacliLogDisk data structure for output
 type SsacliLogDisk struct {
 	SsacliLogDiskData []SsacliLogDiskData
 }
 
-// SsacliLogDiskData data structure for output
 type SsacliLogDiskData struct {
-	Size      string
-	Cylinders float64
-	Status    string
-	Caching   string
-	UID       string
-	LName     string
-	LID       string
+	ID             string
+	Size           string
+	Cylinders      float64
+	Status         string
+	Caching        string
+	UID            string
+	LName          string
+	LID            string
+	FaultTolerance string
+	UME            string
 }
 
-// ParseSsacliLogDisk return specific metric
 func ParseSsacliLogDisk(s string) *SsacliLogDisk {
-	data := parseSsacliLogDisk(s)
-
-	return data
-}
-
-func parseSsacliLogDisk(s string) *SsacliLogDisk {
-
 	var (
-		tmp SsacliLogDiskData
+		data []SsacliLogDiskData
+		tmp  SsacliLogDiskData
 	)
 
-	for _, line := range strings.Split(s, "\n") {
-		kvs := strings.Trim(line, " \t")
-		kv := strings.Split(kvs, ": ")
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		line = strings.TrimSpace(line)
 
-		if len(kv) == 2 {
-
-			switch kv[0] {
-			case "Size":
-				tmp.Size = kv[1]
-			case "Cylinders":
-				tmp.Cylinders = toFLO(kv[1])
-			case "Status":
-				tmp.Status = kv[1]
-			case "Caching":
-				tmp.Caching = kv[1]
-			case "Unique Identifier":
-				tmp.UID = kv[1]
-			case "Disk Name":
-				tmp.LName = kv[1]
-			case "Logical Drive Label":
-				tmp.LID = kv[1]
+		if strings.HasPrefix(line, "Logical Drive:") {
+			if tmp.ID != "" {
+				data = append(data, tmp)
 			}
+			tmp = SsacliLogDiskData{}
+			parts := strings.Split(line, ": ")
+			if len(parts) > 1 {
+				tmp.ID = parts[1]
+			}
+			continue
+		}
+
+		kv := strings.SplitN(line, ": ", 2)
+		if len(kv) == 2 {
+			key := strings.TrimSpace(kv[0])
+			val := strings.TrimSpace(kv[1])
+
+			switch key {
+			case "Size":
+				tmp.Size = val
+			case "Cylinders":
+				tmp.Cylinders = toFLO(val)
+			case "Status":
+				tmp.Status = val
+			case "Caching":
+				tmp.Caching = val
+			case "Unique Identifier":
+				tmp.UID = val
+			case "Disk Name":
+				tmp.LName = val
+			case "Logical Drive Label":
+				tmp.LID = val
+			case "Fault Tolerance":
+				tmp.FaultTolerance = val
+			case "Unrecoverable Media Errors":
+				tmp.UME = val
+			}
+		}
+
+		if i == len(lines)-1 && tmp.ID != "" {
+			data = append(data, tmp)
 		}
 	}
 
-	data := SsacliLogDisk{
-		SsacliLogDiskData: []SsacliLogDiskData{
-			tmp,
-		},
+	if len(data) == 0 && tmp.Status != "" {
+		data = append(data, tmp)
 	}
-	return &data
+
+	return &SsacliLogDisk{SsacliLogDiskData: data}
 }

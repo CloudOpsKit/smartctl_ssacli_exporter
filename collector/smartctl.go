@@ -11,7 +11,6 @@ import (
 
 var _ prometheus.Collector = &SmartctlDiskCollector{}
 
-// SmartctlDiskCollector Contain raid controller detail information
 type SmartctlDiskCollector struct {
 	diskID     string
 	diskN      int
@@ -43,9 +42,7 @@ type SmartctlDiskCollector struct {
 	totalLBAsRead         *prometheus.Desc
 }
 
-// NewSmartctlDiskCollector Create new collector
 func NewSmartctlDiskCollector(devicePath string, diskID string, diskN int) *SmartctlDiskCollector {
-	// Init labels
 	var (
 		namespace = "smartctl"
 		subsystem = "physical_disk"
@@ -58,199 +55,57 @@ func NewSmartctlDiskCollector(devicePath string, diskID string, diskN int) *Smar
 		}
 	)
 
-	// Rerutn Colected metric to ch <-
-	// Include labels
 	return &SmartctlDiskCollector{
-		diskID:     diskID,
-		diskN:      diskN,
-		devicePath: devicePath,
-		rawReadErrorRate: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "rawReadErrorRate"),
-			"Smartctl raw read error rate",
-			labels,
-			nil,
-		),
-		reallocatedSectorCt: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "reallocatedSectorCt"),
-			"Smartctl reallocated sector ct",
-			labels,
-			nil,
-		),
-		powerOnHours: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "powerOnHours"),
-			"Smartctl power on hours",
-			labels,
-			nil,
-		),
-		powerCycleCount: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "powerCycleCount"),
-			"Smartctl power cycle down count",
-			labels,
-			nil,
-		),
-		runtimeBadBlock: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "runtimeBadBlock"),
-			"Smartctl runtime bad block",
-			labels,
-			nil,
-		),
-		endToEndError: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "endToEndError"),
-			"Smartctl end to end error",
-			labels,
-			nil,
-		),
-		reportedUncorrect: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "reportedUncorrect"),
-			"Smartctl reported uncorrect",
-			labels,
-			nil,
-		),
-		commandTimeout: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "commandTimeout"),
-			"Smartctl command timeout",
-			labels,
-			nil,
-		),
-		hardwareECCRecovered: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "hardwareECCRecovered"),
-			"Smartctl hardware ecc recovered",
-			labels,
-			nil,
-		),
-		reallocatedEventCount: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "reallocatedEventCount"),
-			"Smartctl reallocated event count",
-			labels,
-			nil,
-		),
-		currentPendingSector: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "currentPendingSector"),
-			"Smartctl current pending sector",
-			labels,
-			nil,
-		),
-		offlineUncorrectable: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "offlineUncorrectable"),
-			"Smartctl offline uncorrectable",
-			labels,
-			nil,
-		),
-		uDMACRCErrorCount: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "uDMACRCErrorCount"),
-			"Smartctl ud macrc error count",
-			labels,
-			nil,
-		),
-		unusedRsvdBlkCntTot: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "unusedRsvdBlkCntTot"),
-			"Smartctl unused rsvd block Count Total",
-			labels,
-			nil,
-		),
-		grownDefects: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "grownDefects"),
-			"Smartctl elements in grown defect list",
-			labels,
-			nil,
-		),
-		spinUpTime: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "spinUpTime"),
-			"Smartctl spin up time",
-			labels,
-			nil,
-		),
-		startStopCount: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "startStopCount"),
-			"Smartctl start stop count",
-			labels,
-			nil,
-		),
-		seekErrorRate: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "seekErrorRate"),
-			"Smartctl seek error rate",
-			labels,
-			nil,
-		),
-		spinRetryCount: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "spinRetryCount"),
-			"Smartctl spin retry count",
-			labels,
-			nil,
-		),
-		airflowTemperature: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "airflowTemperature"),
-			"Smartctl airflow temperature",
-			labels,
-			nil,
-		),
-		temperatureCelsius: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "temperatureCelsius"),
-			"Smartctl temperature celsius",
-			labels,
-			nil,
-		),
-		loadCycleCount: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "loadCycleCount"),
-			"Smartctl load cycle count",
-			labels,
-			nil,
-		),
-		totalLBAsWritten: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "totalLBAsWritten"),
-			"Smartctl total LBAs written",
-			labels,
-			nil,
-		),
-		totalLBAsRead: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "totalLBAsRead"),
-			"Smartctl total LBAs read",
-			labels,
-			nil,
-		),
+		diskID:                diskID,
+		diskN:                 diskN,
+		devicePath:            devicePath,
+		rawReadErrorRate:      prometheus.NewDesc(prometheus.BuildFQName(namespace, subsystem, "rawReadErrorRate"), "Smartctl raw read error rate", labels, nil),
+		reallocatedSectorCt:   prometheus.NewDesc(prometheus.BuildFQName(namespace, subsystem, "reallocatedSectorCt"), "Smartctl reallocated sector ct", labels, nil),
+		powerOnHours:          prometheus.NewDesc(prometheus.BuildFQName(namespace, subsystem, "powerOnHours"), "Smartctl power on hours", labels, nil),
+		powerCycleCount:       prometheus.NewDesc(prometheus.BuildFQName(namespace, subsystem, "powerCycleCount"), "Smartctl power cycle down count", labels, nil),
+		runtimeBadBlock:       prometheus.NewDesc(prometheus.BuildFQName(namespace, subsystem, "runtimeBadBlock"), "Smartctl runtime bad block", labels, nil),
+		endToEndError:         prometheus.NewDesc(prometheus.BuildFQName(namespace, subsystem, "endToEndError"), "Smartctl end to end error", labels, nil),
+		reportedUncorrect:     prometheus.NewDesc(prometheus.BuildFQName(namespace, subsystem, "reportedUncorrect"), "Smartctl reported uncorrect", labels, nil),
+		commandTimeout:        prometheus.NewDesc(prometheus.BuildFQName(namespace, subsystem, "commandTimeout"), "Smartctl command timeout", labels, nil),
+		hardwareECCRecovered:  prometheus.NewDesc(prometheus.BuildFQName(namespace, subsystem, "hardwareECCRecovered"), "Smartctl hardware ecc recovered", labels, nil),
+		reallocatedEventCount: prometheus.NewDesc(prometheus.BuildFQName(namespace, subsystem, "reallocatedEventCount"), "Smartctl reallocated event count", labels, nil),
+		currentPendingSector:  prometheus.NewDesc(prometheus.BuildFQName(namespace, subsystem, "currentPendingSector"), "Smartctl current pending sector", labels, nil),
+		offlineUncorrectable:  prometheus.NewDesc(prometheus.BuildFQName(namespace, subsystem, "offlineUncorrectable"), "Smartctl offline uncorrectable", labels, nil),
+		uDMACRCErrorCount:     prometheus.NewDesc(prometheus.BuildFQName(namespace, subsystem, "uDMACRCErrorCount"), "Smartctl ud macrc error count", labels, nil),
+		unusedRsvdBlkCntTot:   prometheus.NewDesc(prometheus.BuildFQName(namespace, subsystem, "unusedRsvdBlkCntTot"), "Smartctl unused rsvd block Count Total", labels, nil),
+		grownDefects:          prometheus.NewDesc(prometheus.BuildFQName(namespace, subsystem, "grownDefects"), "Smartctl elements in grown defect list", labels, nil),
+		spinUpTime:            prometheus.NewDesc(prometheus.BuildFQName(namespace, subsystem, "spinUpTime"), "Smartctl spin up time", labels, nil),
+		startStopCount:        prometheus.NewDesc(prometheus.BuildFQName(namespace, subsystem, "startStopCount"), "Smartctl start stop count", labels, nil),
+		seekErrorRate:         prometheus.NewDesc(prometheus.BuildFQName(namespace, subsystem, "seekErrorRate"), "Smartctl seek error rate", labels, nil),
+		spinRetryCount:        prometheus.NewDesc(prometheus.BuildFQName(namespace, subsystem, "spinRetryCount"), "Smartctl spin retry count", labels, nil),
+		airflowTemperature:    prometheus.NewDesc(prometheus.BuildFQName(namespace, subsystem, "airflowTemperature"), "Smartctl airflow temperature", labels, nil),
+		temperatureCelsius:    prometheus.NewDesc(prometheus.BuildFQName(namespace, subsystem, "temperatureCelsius"), "Smartctl temperature celsius", labels, nil),
+		loadCycleCount:        prometheus.NewDesc(prometheus.BuildFQName(namespace, subsystem, "loadCycleCount"), "Smartctl load cycle count", labels, nil),
+		totalLBAsWritten:      prometheus.NewDesc(prometheus.BuildFQName(namespace, subsystem, "totalLBAsWritten"), "Smartctl total LBAs written", labels, nil),
+		totalLBAsRead:         prometheus.NewDesc(prometheus.BuildFQName(namespace, subsystem, "totalLBAsRead"), "Smartctl total LBAs read", labels, nil),
 	}
 }
 
-// Describe return all description to chanel
 func (c *SmartctlDiskCollector) Describe(ch chan<- *prometheus.Desc) {
 	ds := []*prometheus.Desc{
-		c.rawReadErrorRate,
-		c.reallocatedSectorCt,
-		c.powerOnHours,
-		c.powerCycleCount,
-		c.runtimeBadBlock,
-		c.endToEndError,
-		c.reportedUncorrect,
-		c.commandTimeout,
-		c.hardwareECCRecovered,
-		c.reallocatedEventCount,
-		c.currentPendingSector,
-		c.offlineUncorrectable,
-		c.uDMACRCErrorCount,
-		c.unusedRsvdBlkCntTot,
-		c.grownDefects,
-		c.spinUpTime,
-		c.startStopCount,
-		c.seekErrorRate,
-		c.spinRetryCount,
-		c.airflowTemperature,
-		c.temperatureCelsius,
-		c.loadCycleCount,
-		c.totalLBAsWritten,
-		c.totalLBAsRead,
+		c.rawReadErrorRate, c.reallocatedSectorCt, c.powerOnHours, c.powerCycleCount,
+		c.runtimeBadBlock, c.endToEndError, c.reportedUncorrect, c.commandTimeout,
+		c.hardwareECCRecovered, c.reallocatedEventCount, c.currentPendingSector,
+		c.offlineUncorrectable, c.uDMACRCErrorCount, c.unusedRsvdBlkCntTot,
+		c.grownDefects, c.spinUpTime, c.startStopCount, c.seekErrorRate,
+		c.spinRetryCount, c.airflowTemperature, c.temperatureCelsius,
+		c.loadCycleCount, c.totalLBAsWritten, c.totalLBAsRead,
 	}
 	for _, d := range ds {
-		ch <- d
+		if d != nil {
+			ch <- d
+		}
 	}
 }
 
-// Collect create collector
-// Get metric
-// Handle error
 func (c *SmartctlDiskCollector) Collect(ch chan<- prometheus.Metric) {
-	if desc, err := c.collect(ch); err != nil {
-		//log.Debugln("[ERROR] failed collecting metric %v: %v", desc, err)
-		ch <- prometheus.NewInvalidMetric(desc, err)
+	if _, err := c.collect(ch); err != nil {
+		log.Printf("[ERROR] smartctl failed for disk %s (idx %d): %v", c.diskID, c.diskN, err)
 		return
 	}
 }
@@ -261,237 +116,56 @@ func (c *SmartctlDiskCollector) collect(ch chan<- prometheus.Metric) (*prometheu
 	}
 
 	diskArg := fmt.Sprintf("cciss,%d", c.diskN)
-
 	cmd := exec.Command("smartctl", "-iA", "-d", diskArg, c.devicePath)
 	out, err := cmd.CombinedOutput()
 
-	if err != nil {
-		//log.Debugln("[ERROR] smart log: \n%s\n", out)
-		return nil, err
-	}
-
 	data := parser.ParseSmartctlDisk(string(out))
-
 	if data == nil {
-		log.Printf("[FATAL] Unable get data from smartctl exporter")
-		return nil, nil
+		if err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf("unable to parse smartctl output")
 	}
 
-	// Safety check: verify that arrays are not empty to avoid "index out of range" panic
 	if len(data.SmartctlDiskDataInfo) == 0 || len(data.SmartctlDiskDataAttr) == 0 {
-		return nil, fmt.Errorf("parsed data is empty")
+		return nil, fmt.Errorf("parsed smartctl data is empty")
 	}
 
 	info := data.SmartctlDiskDataInfo[0]
 	attrs := data.SmartctlDiskDataAttr[0]
 
-	var (
-		labels = []string{
-			c.diskID,
-			info.Model,
-			info.SN,
-			info.RotRate,
-			info.FromFact,
+	labels := []string{c.diskID, info.Model, info.SN, info.RotRate, info.FromFact}
+
+	sendMetric := func(desc *prometheus.Desc, val *float64) {
+		if desc != nil && val != nil {
+			ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, *val, labels...)
 		}
-	)
-
-	// Check each attribute pointer before sending.
-	// If the pointer is not nil, the metric exists on the disk -> send it.
-	// If the pointer is nil, the metric is missing -> skip it (do not send 0).
-
-	if attrs.RawReadErrorRate != nil {
-		ch <- prometheus.MustNewConstMetric(
-			c.rawReadErrorRate,
-			prometheus.GaugeValue,
-			*attrs.RawReadErrorRate, // Dereference the pointer (*) to get float64
-			labels...,
-		)
-	}
-	if attrs.ReallocatedSectorCt != nil {
-		ch <- prometheus.MustNewConstMetric(
-			c.reallocatedSectorCt,
-			prometheus.GaugeValue,
-			*attrs.ReallocatedSectorCt,
-			labels...,
-		)
-	}
-	if attrs.PowerOnHours != nil {
-		ch <- prometheus.MustNewConstMetric(
-			c.powerOnHours,
-			prometheus.GaugeValue,
-			*attrs.PowerOnHours,
-			labels...,
-		)
-	}
-	if attrs.PowerCycleCount != nil {
-		ch <- prometheus.MustNewConstMetric(
-			c.powerCycleCount,
-			prometheus.GaugeValue,
-			*attrs.PowerCycleCount,
-			labels...,
-		)
-	}
-	if attrs.RuntimeBadBlock != nil {
-		ch <- prometheus.MustNewConstMetric(
-			c.runtimeBadBlock,
-			prometheus.GaugeValue,
-			*attrs.RuntimeBadBlock,
-			labels...,
-		)
-	}
-	if attrs.EndToEndError != nil {
-		ch <- prometheus.MustNewConstMetric(
-			c.endToEndError,
-			prometheus.GaugeValue,
-			*attrs.EndToEndError,
-			labels...,
-		)
-	}
-	if attrs.ReportedUncorrect != nil {
-		ch <- prometheus.MustNewConstMetric(
-			c.reportedUncorrect,
-			prometheus.GaugeValue,
-			*attrs.ReportedUncorrect,
-			labels...,
-		)
-	}
-	if attrs.CommandTimeout != nil {
-		ch <- prometheus.MustNewConstMetric(
-			c.commandTimeout,
-			prometheus.GaugeValue,
-			*attrs.CommandTimeout,
-			labels...,
-		)
-	}
-	if attrs.HardwareECCRecovered != nil {
-		ch <- prometheus.MustNewConstMetric(
-			c.hardwareECCRecovered,
-			prometheus.GaugeValue,
-			*attrs.HardwareECCRecovered,
-			labels...,
-		)
-	}
-	if attrs.ReallocatedEventCount != nil {
-		ch <- prometheus.MustNewConstMetric(
-			c.reallocatedEventCount,
-			prometheus.GaugeValue,
-			*attrs.ReallocatedEventCount,
-			labels...,
-		)
-	}
-	if attrs.CurrentPendingSector != nil {
-		ch <- prometheus.MustNewConstMetric(
-			c.currentPendingSector,
-			prometheus.GaugeValue,
-			*attrs.CurrentPendingSector,
-			labels...,
-		)
-	}
-	if attrs.OfflineUncorrectable != nil {
-		ch <- prometheus.MustNewConstMetric(
-			c.offlineUncorrectable,
-			prometheus.GaugeValue,
-			*attrs.OfflineUncorrectable,
-			labels...,
-		)
-	}
-	if attrs.UDMACRCErrorCount != nil {
-		ch <- prometheus.MustNewConstMetric(
-			c.uDMACRCErrorCount,
-			prometheus.GaugeValue,
-			*attrs.UDMACRCErrorCount,
-			labels...,
-		)
-	}
-	if attrs.UnusedRsvdBlkCntTot != nil {
-		ch <- prometheus.MustNewConstMetric(
-			c.unusedRsvdBlkCntTot,
-			prometheus.GaugeValue,
-			*attrs.UnusedRsvdBlkCntTot,
-			labels...,
-		)
-	}
-	if attrs.GrownDefects != nil {
-		ch <- prometheus.MustNewConstMetric(
-			c.grownDefects,
-			prometheus.GaugeValue,
-			*attrs.GrownDefects,
-			labels...,
-		)
 	}
 
-	if attrs.SpinUpTime != nil {
-		ch <- prometheus.MustNewConstMetric(
-			c.spinUpTime,
-			prometheus.GaugeValue,
-			*attrs.SpinUpTime,
-			labels...,
-		)
-	}
-	if attrs.StartStopCount != nil {
-		ch <- prometheus.MustNewConstMetric(
-			c.startStopCount,
-			prometheus.GaugeValue,
-			*attrs.StartStopCount,
-			labels...,
-		)
-	}
-	if attrs.SeekErrorRate != nil {
-		ch <- prometheus.MustNewConstMetric(
-			c.seekErrorRate,
-			prometheus.GaugeValue,
-			*attrs.SeekErrorRate,
-			labels...,
-		)
-	}
-	if attrs.SpinRetryCount != nil {
-		ch <- prometheus.MustNewConstMetric(
-			c.spinRetryCount,
-			prometheus.GaugeValue,
-			*attrs.SpinRetryCount,
-			labels...,
-		)
-	}
-	if attrs.AirflowTemperature != nil {
-		ch <- prometheus.MustNewConstMetric(
-			c.airflowTemperature,
-			prometheus.GaugeValue,
-			*attrs.AirflowTemperature,
-			labels...,
-		)
-	}
-	if attrs.TemperatureCelsius != nil {
-		ch <- prometheus.MustNewConstMetric(
-			c.temperatureCelsius,
-			prometheus.GaugeValue,
-			*attrs.TemperatureCelsius,
-			labels...,
-		)
-	}
-	if attrs.LoadCycleCount != nil {
-		ch <- prometheus.MustNewConstMetric(
-			c.loadCycleCount,
-			prometheus.GaugeValue,
-			*attrs.LoadCycleCount,
-			labels...,
-		)
-	}
-	if attrs.TotalLBAsWritten != nil {
-		ch <- prometheus.MustNewConstMetric(
-			c.totalLBAsWritten,
-			prometheus.GaugeValue,
-			*attrs.TotalLBAsWritten,
-			labels...,
-		)
-	}
-	if attrs.TotalLBAsRead != nil {
-		ch <- prometheus.MustNewConstMetric(
-			c.totalLBAsRead,
-			prometheus.GaugeValue,
-			*attrs.TotalLBAsRead,
-			labels...,
-		)
-	}
+	sendMetric(c.rawReadErrorRate, attrs.RawReadErrorRate)
+	sendMetric(c.reallocatedSectorCt, attrs.ReallocatedSectorCt)
+	sendMetric(c.powerOnHours, attrs.PowerOnHours)
+	sendMetric(c.powerCycleCount, attrs.PowerCycleCount)
+	sendMetric(c.runtimeBadBlock, attrs.RuntimeBadBlock)
+	sendMetric(c.endToEndError, attrs.EndToEndError)
+	sendMetric(c.reportedUncorrect, attrs.ReportedUncorrect)
+	sendMetric(c.commandTimeout, attrs.CommandTimeout)
+	sendMetric(c.hardwareECCRecovered, attrs.HardwareECCRecovered)
+	sendMetric(c.reallocatedEventCount, attrs.ReallocatedEventCount)
+	sendMetric(c.currentPendingSector, attrs.CurrentPendingSector)
+	sendMetric(c.offlineUncorrectable, attrs.OfflineUncorrectable)
+	sendMetric(c.uDMACRCErrorCount, attrs.UDMACRCErrorCount)
+	sendMetric(c.unusedRsvdBlkCntTot, attrs.UnusedRsvdBlkCntTot)
+	sendMetric(c.grownDefects, attrs.GrownDefects)
+	sendMetric(c.spinUpTime, attrs.SpinUpTime)
+	sendMetric(c.startStopCount, attrs.StartStopCount)
+	sendMetric(c.seekErrorRate, attrs.SeekErrorRate)
+	sendMetric(c.spinRetryCount, attrs.SpinRetryCount)
+	sendMetric(c.airflowTemperature, attrs.AirflowTemperature)
+	sendMetric(c.temperatureCelsius, attrs.TemperatureCelsius)
+	sendMetric(c.loadCycleCount, attrs.LoadCycleCount)
+	sendMetric(c.totalLBAsWritten, attrs.TotalLBAsWritten)
+	sendMetric(c.totalLBAsRead, attrs.TotalLBAsRead)
 
 	return nil, nil
 }
