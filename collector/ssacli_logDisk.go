@@ -3,7 +3,6 @@ package collector
 import (
 	"log"
 	"os/exec"
-	"strings"
 
 	"github.com/CloudOpsKit/smartctl_ssacli_exporter/parser"
 	"github.com/prometheus/client_golang/prometheus"
@@ -11,61 +10,57 @@ import (
 
 var _ prometheus.Collector = &SsacliLogDiskCollector{}
 
-// SsacliLogDiskCollector Contain raid controller detail information
 type SsacliLogDiskCollector struct {
-	diskID    string
-	conID     string
-	cylinders *prometheus.Desc
+	diskID            string
+	slotID            string
+	rawData           string
+	logDiskStatusDesc *prometheus.Desc
 }
 
-// NewSsacliLogDiskCollector Create new collector
-func NewSsacliLogDiskCollector(diskID, conID string) *SsacliLogDiskCollector {
-	// Init labels
+func NewSsacliLogDiskCollector(diskID string, slotID string) *SsacliLogDiskCollector {
+	return NewSsacliLogDiskCollectorWithData(diskID, slotID, "")
+}
+
+func NewSsacliLogDiskCollectorWithData(diskID string, slotID string, data string) *SsacliLogDiskCollector {
 	var (
 		namespace = "ssacli"
-		subsystem = "logical_array"
+		subsystem = "log_disk"
 		labels    = []string{
-			"Size",
-			"Status",
-			"Caching",
-			"UID",
-			"LName",
-			"LID",
+			"logDiskID",
+			"logDiskSize",
+			"logDiskFaultTolerance",
+			"logDiskStatus",
+			"logDiskCaching",
+			"logDiskUME",
+			"logDiskSlotID",
 		}
 	)
 
-	// Rerutn Colected metric to ch <-
-	// Include labels
 	return &SsacliLogDiskCollector{
-		diskID: diskID,
-		conID:  conID,
-		cylinders: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "cylinders"),
-			"Logical array cylinder count",
+		diskID:  diskID,
+		slotID:  slotID,
+		rawData: data,
+		logDiskStatusDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, subsystem, "status"),
+			"Hardware raid logical drive status (1 if OK, 0 otherwise)",
 			labels,
 			nil,
 		),
 	}
 }
 
-// Describe return all description to chanel
 func (c *SsacliLogDiskCollector) Describe(ch chan<- *prometheus.Desc) {
-	ds := []*prometheus.Desc{
-		c.cylinders,
-	}
-	for _, d := range ds {
-		ch <- d
-	}
+	ch <- c.logDiskStatusDesc
 }
 
-// Collect create collector
-// Get metric
-// Handle error
 func (c *SsacliLogDiskCollector) Collect(ch chan<- prometheus.Metric) {
-	if desc, err := c.collect(ch); err != nil {
-		//log.Debugln("[ERROR] failed collecting metric %v: %v", desc, err)
-		ch <- prometheus.NewInvalidMetric(desc, err)
+	if c.logDiskStatusDesc == nil {
+		log.Printf("[ERROR] logDiskStatusDesc is not initialized for %s", c.diskID)
 		return
+	}
+
+	if _, err := c.collect(ch); err != nil {
+		log.Printf("[ERROR] failed collecting logical disk metrics for %s: %v", c.diskID, err)
 	}
 }
 
@@ -74,40 +69,46 @@ func (c *SsacliLogDiskCollector) collect(ch chan<- prometheus.Metric) (*promethe
 		return nil, nil
 	}
 
-	slotArg := "slot=" + c.conID
-	out, err := exec.Command("ssacli", "ctrl", slotArg, "ld", c.diskID, "show").CombinedOutput()
-
-	if err != nil {
-		//log.Debugln("[ERROR] ssacli log: \n%s\n", out)
-		return nil, err
+	var output string
+	if c.rawData != "" {
+		output = c.rawData
+	} else {
+		slotArg := "slot=" + c.slotID
+		out, err := exec.Command("ssacli", "ctrl", slotArg, "ld", c.diskID, "show").CombinedOutput()
+		if err != nil {
+			return nil, err
+		}
+		output = string(out)
 	}
 
-	// Remove extra spaces and empty lines
-	cleanOutput := strings.TrimSpace(string(out))
-	data := parser.ParseSsacliLogDisk(cleanOutput)
-
-	if data == nil {
-		log.Printf("[FATAL] Unable get data from ssacli logical array exporter")
+	data := parser.ParseSsacliLogDisk(output)
+	if data == nil || len(data.SsacliLogDiskData) == 0 {
 		return nil, nil
 	}
 
-	var (
-		labels = []string{
-			data.SsacliLogDiskData[0].Size,
-			data.SsacliLogDiskData[0].Status,
-			data.SsacliLogDiskData[0].Caching,
-			data.SsacliLogDiskData[0].UID,
-			data.SsacliLogDiskData[0].LName,
-			data.SsacliLogDiskData[0].LID,
+	for i := range data.SsacliLogDiskData {
+		labels := []string{
+			c.diskID,
+			data.SsacliLogDiskData[i].Size,
+			data.SsacliLogDiskData[i].FaultTolerance,
+			data.SsacliLogDiskData[i].Status,
+			data.SsacliLogDiskData[i].Caching,
+			data.SsacliLogDiskData[i].UME,
+			c.slotID,
 		}
-	)
 
-	ch <- prometheus.MustNewConstMetric(
-		c.cylinders,
-		prometheus.GaugeValue,
-		float64(data.SsacliLogDiskData[0].Cylinders),
-		labels...,
-	)
+		val := 0.0
+		if data.SsacliLogDiskData[i].Status == "OK" {
+			val = 1.0
+		}
+
+		ch <- prometheus.MustNewConstMetric(
+			c.logDiskStatusDesc,
+			prometheus.GaugeValue,
+			val,
+			labels...,
+		)
+	}
 
 	return nil, nil
 }
