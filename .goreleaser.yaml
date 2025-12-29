@@ -19,4 +19,4 @@ archives:
       {{- if .Arm }}v{{ .Arm }}{{ end }}
 
 changelog:
-  sort: asc
+  use: github-native
