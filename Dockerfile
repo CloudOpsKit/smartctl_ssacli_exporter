@@ -1,6 +1,6 @@
 ARG SSACLI_VERSION=6.15-11.0
 
-FROM golang:1.25.5-bookworm as builder
+FROM golang:1.26rc2-bookworm as builder
 
 ARG GIT_REPOSITORY
 ARG SSH_DEPLOY_KEY
