@@ -3,7 +3,7 @@ name: Publish Base Image
 # Rebuilds the runtime base image (smartctl + ssacli) used by ko.
 on:
   push:
-    branches: [master]
+    branches: [main]
     paths:
       - Dockerfile.base
       - .github/workflows/base-image.yml

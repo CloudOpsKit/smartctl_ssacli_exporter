@@ -1,28 +1,25 @@
 package exporter
 
 import (
-	"os/exec"
+	"github.com/CloudOpsKit/smartctl_ssacli_exporter/command"
 	"regexp"
 	"strings"
 )
 
-func getControllerSlots() ([]string, error) {
-	out, err := exec.Command("ssacli", "ctrl", "all", "show", "status").CombinedOutput()
-	if err != nil {
-		return nil, err
-	}
+var controllerSlotRe = regexp.MustCompile(`in Slot\s+(\d+)`)
 
+// parseControllerSlots extracts slot numbers from "ssacli ctrl all show detail"
+// output, where each controller starts with a header like "Smart Array P420 in Slot 2".
+func parseControllerSlots(out string) []string {
 	var slots []string
-	// Ищем строку вида "Smart Array P420 in Slot 2"
-	re := regexp.MustCompile(`Slot\s+(\d+)`)
-	matches := re.FindAllStringSubmatch(string(out), -1)
-
-	for _, match := range matches {
-		if len(match) > 1 {
-			slots = append(slots, match[1])
+	seen := make(map[string]bool)
+	for _, match := range controllerSlotRe.FindAllStringSubmatch(out, -1) {
+		if slot := match[1]; !seen[slot] {
+			seen[slot] = true
+			slots = append(slots, slot)
 		}
 	}
-	return slots, nil
+	return slots
 }
 
 // physicalDisk holds the raw "show detail" block of a single physical drive.
@@ -34,7 +31,7 @@ type physicalDisk struct {
 // getPhysicalDisksBulk returns physical drives in the order ssacli reports them.
 // The order matters: a drive's position is its smartctl "-d cciss,N" index.
 func getPhysicalDisksBulk(slotID string) ([]physicalDisk, error) {
-	out, err := exec.Command("ssacli", "ctrl", "slot="+slotID, "pd", "all", "show", "detail").CombinedOutput()
+	out, err := command.Run("ssacli", "ctrl", "slot="+slotID, "pd", "all", "show", "detail")
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +60,7 @@ func splitPhysicalDisks(out string) []physicalDisk {
 }
 
 func getLogicalDrivesBulk(slotID string) (map[string]string, error) {
-	out, err := exec.Command("ssacli", "ctrl", "slot="+slotID, "ld", "all", "show", "detail").CombinedOutput()
+	out, err := command.Run("ssacli", "ctrl", "slot="+slotID, "ld", "all", "show", "detail")
 	if err != nil {
 		return nil, err
 	}

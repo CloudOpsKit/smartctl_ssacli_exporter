@@ -1,8 +1,8 @@
 package collector
 
 import (
+	"github.com/CloudOpsKit/smartctl_ssacli_exporter/command"
 	"log"
-	"os/exec"
 
 	"github.com/CloudOpsKit/smartctl_ssacli_exporter/parser"
 	"github.com/prometheus/client_golang/prometheus"
@@ -74,7 +74,7 @@ func (c *SsacliLogDiskCollector) collect(ch chan<- prometheus.Metric) (*promethe
 		output = c.rawData
 	} else {
 		slotArg := "slot=" + c.slotID
-		out, err := exec.Command("ssacli", "ctrl", slotArg, "ld", c.diskID, "show").CombinedOutput()
+		out, err := command.Run("ssacli", "ctrl", slotArg, "ld", c.diskID, "show")
 		if err != nil {
 			return nil, err
 		}

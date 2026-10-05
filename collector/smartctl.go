@@ -2,8 +2,8 @@ package collector
 
 import (
 	"fmt"
+	"github.com/CloudOpsKit/smartctl_ssacli_exporter/command"
 	"log"
-	"os/exec"
 
 	"github.com/CloudOpsKit/smartctl_ssacli_exporter/parser"
 	"github.com/prometheus/client_golang/prometheus"
@@ -116,8 +116,7 @@ func (c *SmartctlDiskCollector) collect(ch chan<- prometheus.Metric) (*prometheu
 	}
 
 	diskArg := fmt.Sprintf("cciss,%d", c.diskN)
-	cmd := exec.Command("smartctl", "-iA", "-d", diskArg, c.devicePath)
-	out, err := cmd.CombinedOutput()
+	out, err := command.Run("smartctl", "-iA", "-d", diskArg, c.devicePath)
 
 	data := parser.ParseSmartctlDisk(string(out))
 	if data == nil {

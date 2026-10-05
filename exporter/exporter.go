@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/CloudOpsKit/smartctl_ssacli_exporter/collector"
+	"github.com/CloudOpsKit/smartctl_ssacli_exporter/command"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -40,13 +41,18 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 // Collect sends the collected metrics from each of the collectors to
 // exporter.
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
-	collector.NewSsacliSumCollector().Collect(ch)
-
-	slotIDs, err := getControllerSlots()
+	// One "ctrl all show detail" call feeds both the controller summary
+	// and the slot list, since each ssacli call takes seconds
+	out, err := command.Run("ssacli", "ctrl", "all", "show", "detail")
 	if err != nil {
-		log.Printf("[ERROR] failed getting controller slots: %v", err)
+		log.Printf("[ERROR] failed getting controller details: %v", err)
+		// Fail the scrape so the error is visible in Prometheus
+		ch <- prometheus.NewInvalidMetric(nil, err)
 		return
 	}
+
+	collector.NewSsacliSumCollectorWithData(string(out)).Collect(ch)
+	slotIDs := parseControllerSlots(string(out))
 
 	var wg sync.WaitGroup
 

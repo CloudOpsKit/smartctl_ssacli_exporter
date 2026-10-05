@@ -56,3 +56,24 @@ Smart Array P420i in Slot 0 (Embedded)
 		t.Errorf("disk data should start with its header, got %q", got)
 	}
 }
+
+func TestParseControllerSlots(t *testing.T) {
+	out := `
+Smart Array P420i in Slot 0 (Embedded)
+   Bus Interface: PCI
+   Slot: 0
+   Serial Number: 001438031A4B2C0
+   Controller Status: OK
+
+Smart Array P822 in Slot 3
+   Bus Interface: PCI
+   Slot: 3
+   Serial Number: PDVTF0BRH5T0KZ
+   Controller Status: OK
+`
+	got := parseControllerSlots(out)
+	want := []string{"0", "3"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("got slots %v, want %v", got, want)
+	}
+}

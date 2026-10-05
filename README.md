@@ -6,6 +6,7 @@ Export metric from HP enterprise raid card &amp; disk smartctl with auto detect 
 | listen      |:9633          | Exporter listener port && address                              |
 | metricsPath |/metrics       | URL path for surfacing collected metrics                       |
 | devicePath  |/dev/sda       | Path to the raid controller device (e.g. /dev/sda or /dev/sg0) |
+| timeout     |30s            | Timeout for each ssacli/smartctl call                          |
 
 ## Usage
 
