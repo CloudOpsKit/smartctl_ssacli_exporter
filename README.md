@@ -7,6 +7,10 @@ Export metric from HP enterprise raid card &amp; disk smartctl with auto detect 
 | metricsPath |/metrics       | URL path for surfacing collected metrics                       |
 | devicePath  |/dev/sda       | Path to the raid controller device (e.g. /dev/sda or /dev/sg0) |
 | timeout     |30s            | Timeout for each ssacli/smartctl call                          |
+| interval    |1m             | How often to collect metrics in the background                 |
+
+Metrics are collected in the background every `interval` and scrapes are served from a cache, because each `ssacli`/`smartctl` call takes seconds.
+Check `smartctl_ssacli_exporter_last_collect_success` and `smartctl_ssacli_exporter_last_collect_timestamp_seconds` to detect failed or stale collections.
 
 ## Usage
 
