@@ -51,28 +51,26 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	var wg sync.WaitGroup
 
 	for _, slotID := range slotIDs {
-		pdDataMap, err := getPhysicalDisksBulk(slotID)
+		pds, err := getPhysicalDisksBulk(slotID)
 		if err != nil {
 			log.Printf("[ERROR] failed getting bulk PD data for slot %s: %v", slotID, err)
 			continue
 		}
 
-		smartCtlIndex := 0
-		for pdID, rawData := range pdDataMap {
+		// The drive's position in ssacli output is its smartctl "-d cciss,N" index
+		for smartCtlIndex, pd := range pds {
 			wg.Add(1)
 			go func(sID, pID, data string, idx int) {
 				defer wg.Done()
 
-				// NEW: Pass pre-collected raw data to the collector
+				// Pass pre-collected raw data to the collector
 				// This prevents the collector from running its own 'ssacli' command
 				collector.NewSsacliPhysDiskCollectorWithData(pID, sID, data).Collect(ch)
 
 				// SMART metrics still need separate 'smartctl' calls
 				// because they talk to the disk firmware directly
 				collector.NewSmartctlDiskCollector(e.devicePath, pID, idx).Collect(ch)
-			}(slotID, pdID, rawData, smartCtlIndex)
-
-			smartCtlIndex++
+			}(slotID, pd.ID, pd.Data, smartCtlIndex)
 		}
 
 		ldDataMap, err := getLogicalDrivesBulk(slotID)
