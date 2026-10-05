@@ -20,7 +20,7 @@ RUN \
   go get && \
   go build -o smartctl_ssacli_exporter
 
-FROM debian:13.3-slim
+FROM debian:13.4-slim
 LABEL maintainer="Patrick Baus <patrick.baus@physik.tu-darmstadt.de>"
 ARG SSACLI_VERSION
 
