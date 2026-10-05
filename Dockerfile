@@ -1,6 +1,6 @@
 ARG SSACLI_VERSION=6.15-11.0
 
-FROM golang:1.26.2-bookworm as builder
+FROM golang:1.27.1-trixie as builder
 
 ARG GIT_REPOSITORY
 ARG SSH_DEPLOY_KEY
@@ -20,7 +20,7 @@ RUN \
   go get && \
   go build -o smartctl_ssacli_exporter
 
-FROM debian:13.4-slim
+FROM debian:13.7-slim
 LABEL maintainer="Patrick Baus <patrick.baus@physik.tu-darmstadt.de>"
 ARG SSACLI_VERSION
 
