@@ -1,0 +1,16 @@
+# Base image for ko: runtime dependencies of the exporter (smartctl, ssacli).
+# The exporter binary itself is built and layered on top by ko (see .ko.yaml).
+FROM debian:13.7-slim
+
+ARG SSACLI_VERSION=6.15-11.0
+
+ADD https://downloads.linux.hpe.com/SDR/repo/mcp/Debian/pool/non-free/ssacli-${SSACLI_VERSION}_amd64.deb /tmp/ssacli.deb
+
+RUN apt-get update && \
+  apt-get upgrade -y && \
+  apt-get install -y --no-install-recommends \
+    smartmontools \
+    procps && \
+  dpkg -i /tmp/ssacli.deb && \
+  apt-get clean && \
+  rm -rf /var/lib/apt/lists/* /tmp/ssacli.deb

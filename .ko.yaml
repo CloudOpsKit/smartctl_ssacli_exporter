@@ -1,0 +1,10 @@
+defaultBaseImage: ghcr.io/cloudopskit/smartctl_ssacli_exporter/base:latest
+defaultPlatforms:
+  - linux/amd64
+builds:
+  - id: smartctl-ssacli-exporter
+    main: .
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w
