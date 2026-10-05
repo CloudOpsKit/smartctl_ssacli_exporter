@@ -25,14 +25,25 @@ func getControllerSlots() ([]string, error) {
 	return slots, nil
 }
 
-func getPhysicalDisksBulk(slotID string) (map[string]string, error) {
+// physicalDisk holds the raw "show detail" block of a single physical drive.
+type physicalDisk struct {
+	ID   string
+	Data string
+}
+
+// getPhysicalDisksBulk returns physical drives in the order ssacli reports them.
+// The order matters: a drive's position is its smartctl "-d cciss,N" index.
+func getPhysicalDisksBulk(slotID string) ([]physicalDisk, error) {
 	out, err := exec.Command("ssacli", "ctrl", "slot="+slotID, "pd", "all", "show", "detail").CombinedOutput()
 	if err != nil {
 		return nil, err
 	}
+	return splitPhysicalDisks(string(out)), nil
+}
 
-	pdMap := make(map[string]string)
-	parts := strings.Split(string(out), "physicaldrive ")
+func splitPhysicalDisks(out string) []physicalDisk {
+	var disks []physicalDisk
+	parts := strings.Split(out, "physicaldrive ")
 
 	for i, part := range parts {
 		if i == 0 {
@@ -46,10 +57,9 @@ func getPhysicalDisksBulk(slotID string) (map[string]string, error) {
 		if len(fields) < 1 {
 			continue
 		}
-		diskID := fields[0]
-		pdMap[diskID] = "physicaldrive " + part
+		disks = append(disks, physicalDisk{ID: fields[0], Data: "physicaldrive " + part})
 	}
-	return pdMap, nil
+	return disks
 }
 
 func getLogicalDrivesBulk(slotID string) (map[string]string, error) {
