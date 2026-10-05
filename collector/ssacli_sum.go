@@ -1,8 +1,8 @@
 package collector
 
 import (
+	"github.com/CloudOpsKit/smartctl_ssacli_exporter/command"
 	"log"
-	"os/exec"
 	"strings"
 
 	"github.com/CloudOpsKit/smartctl_ssacli_exporter/parser"
@@ -16,6 +16,7 @@ var _ prometheus.Collector = &SsacliSumCollector{}
 
 // SsacliSumCollector Contain raid controller detail information
 type SsacliSumCollector struct {
+	rawData            string
 	hwConSlotDesc      *prometheus.Desc
 	cacheSizeDesc      *prometheus.Desc
 	availCacheSizeDesc *prometheus.Desc
@@ -26,6 +27,12 @@ type SsacliSumCollector struct {
 
 // NewSsacliSumCollector Create new collector
 func NewSsacliSumCollector() *SsacliSumCollector {
+	return NewSsacliSumCollectorWithData("")
+}
+
+// NewSsacliSumCollectorWithData creates a collector that parses pre-collected
+// "ssacli ctrl all show detail" output instead of running ssacli itself
+func NewSsacliSumCollectorWithData(data string) *SsacliSumCollector {
 	// Init labels
 	var (
 		namespace = "ssacli"
@@ -43,6 +50,7 @@ func NewSsacliSumCollector() *SsacliSumCollector {
 	// Rerutn Colected metric to ch <-
 	// Include labels
 	return &SsacliSumCollector{
+		rawData: data,
 		hwConSlotDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, subsystem, "slot"),
 			"Hardware raid controller slot usage",
@@ -109,15 +117,17 @@ func (c *SsacliSumCollector) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (c *SsacliSumCollector) collect(ch chan<- prometheus.Metric) (*prometheus.Desc, error) {
-	out, err := exec.Command("ssacli", "ctrl", "all", "show", "detail").CombinedOutput()
-
-	if err != nil {
-		//log.Debugln("[ERROR] ssacli log: \n%s\n", out)
-		return nil, err
+	output := c.rawData
+	if output == "" {
+		out, err := command.Run("ssacli", "ctrl", "all", "show", "detail")
+		if err != nil {
+			return nil, err
+		}
+		output = string(out)
 	}
 
 	// Remove extra spaces and empty lines at the edges
-	cleanOutput := strings.TrimSpace(string(out))
+	cleanOutput := strings.TrimSpace(output)
 	data := parser.ParseSsacliSum(cleanOutput)
 
 	if data == nil {
