@@ -44,3 +44,7 @@ KO_DOCKER_REPO=ghcr.io/cloudopskit/smartctl_ssacli_exporter ko build . --bare --
 ## Dashboard
 Grafana ID: 12587
 https://grafana.com/grafana/dashboards/12587
+
+## License
+
+[Apache License 2.0](LICENSE).
