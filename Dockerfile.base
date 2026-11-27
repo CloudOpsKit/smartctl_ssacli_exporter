@@ -1,6 +1,6 @@
 # Base image for ko: runtime dependencies of the exporter (smartctl, ssacli).
 # The exporter binary itself is built and layered on top by ko (see .ko.yaml).
-FROM debian:13.7-slim
+FROM debian:13.8-slim
 
 ARG SSACLI_VERSION=6.15-11.0
 
